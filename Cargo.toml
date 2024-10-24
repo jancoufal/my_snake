@@ -2,5 +2,10 @@
 name = "my-snake"
 version = "0.1.0"
 edition = "2021"
+authors = ["Jan Coufal <jan.coufal@gmail.com>"]
 
 [dependencies]
+piston = "0.52.0"
+piston2d-graphics = "0.45.0"
+piston2d-opengl_graphics = "0.78.0"
+pistoncore-glutin_window = "0.72.0"
