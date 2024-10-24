@@ -46,7 +46,9 @@ enum GameState {
 struct Game {
     state: GameState,
     field: Vec<Vec<Cell>>,
+    direction: Direction,
     snake_length: usize,
+    step_count: usize,
 }
 
 impl Game {
@@ -68,12 +70,23 @@ impl Game {
         let (mid_x, mid_y) = (cols / 2, rows / 2);
         field[mid_y][mid_x].cell_type = CellType::SnakeHead;
 
-        Game { state: GameState::Paused, field, snake_length: 1usize }
+        Game {
+            state: GameState::Paused,
+            field,
+            direction: Direction::None,
+            snake_length: 1usize,
+            step_count: 0usize,
+        }
+    }
+
+    fn play(&mut self, direction: Direction) {
+        self.state = GameState::Playing;
+        self.direction = direction;
     }
 }
 
 fn main() {
-    let (cols, rows) = (50, 50);
+    let (cols, rows) = (10, 10);
 
     let mut game = Game::new(cols, rows);
 
