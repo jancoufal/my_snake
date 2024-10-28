@@ -96,21 +96,21 @@ impl Game {
     fn new(cols: usize, rows: usize) -> Game {
 
         let mut field: Vec<Vec<RefCell<Cell>>> = Vec::new();
-        for r in 0..rows {
-            let mut cell_row: Vec<RefCell<Cell>> = Vec::new();
-            for c in 0..cols {
-                let new_cell = match (c, r) {
-                    (0, _) => Cell::new_border(),
-                    (_, _) if c == cols-1 => Cell::new_border(),
-                    (_, 0) => Cell::new_border(),
-                    (_, _) if r == rows-1 => Cell::new_border(),
-                    (_, _) if c == cols/2 && r == rows/2 => Cell::new_head(),
-                    (_, _) => Cell::new_empty(),
-                };
-                cell_row.push(RefCell::new(new_cell));
-            }
-            field.push(cell_row);
-        }
+        // for r in 0..rows {
+        //     let mut cell_row: Vec<RefCell<Cell>> = Vec::new();
+        //     for c in 0..cols {
+        //         let new_cell = match (c, r) {
+        //             (0, _) => Cell::new_border(),
+        //             (_, _) if c == cols-1 => Cell::new_border(),
+        //             (_, 0) => Cell::new_border(),
+        //             (_, _) if r == rows-1 => Cell::new_border(),
+        //             (_, _) if c == cols/2 && r == rows/2 => Cell::new_head(),
+        //             (_, _) => Cell::new_empty(),
+        //         };
+        //         cell_row.push(RefCell::new(new_cell));
+        //     }
+        //     field.push(cell_row);
+        // }
 
         Game {
             state: GameState::Paused,
@@ -134,6 +134,44 @@ pub struct App {
 }
 
 impl App {
+    fn render(&mut self, args: &RenderArgs) {
+        use graphics::*;
+
+        const GREEN: [f32; 4] = [0.0, 1.0, 0.0, 1.0];
+        const RED: [f32; 4] = [1.0, 0.0, 0.0, 1.0];
+
+        let square = rectangle::square(0.0, 0.0, 50.0);
+        let rotation = self.rotation;
+        let (x, y) = (args.window_size[0] / 2.0, args.window_size[1] / 2.0);
+
+        self.gl.draw(args.viewport(), |c, gl| {
+            // Clear the screen.
+            clear(GREEN, gl);
+
+            let transform = c
+                .transform
+                .trans(x, y)
+                .rot_rad(rotation)
+                .trans(-25.0, -25.0);
+
+            // Draw a box rotating around the middle of the screen.
+            rectangle(RED, square, transform, gl);
+        });
+    }
+
+    fn update(&mut self, args: &UpdateArgs) {
+        // Rotate 2 radians per second.
+        self.rotation += 2.0 * args.dt;
+    }
+}
+
+
+struct AppX {
+    gl: GlGraphics, // OpenGL drawing backend.
+    rotation: f64,  // Rotation for the square.
+}
+
+impl AppX {
     fn render(&mut self, args: &RenderArgs, game: &Game) {
         use graphics::*;
 
@@ -178,8 +216,8 @@ impl App {
 }
 
 fn main() {
-    let (cols, rows) = (10, 10);
-    let game = Game::new(cols, rows);
+    // let (cols, rows) = (10, 10);
+    // let game = Game::new(cols, rows);
 
     // for col in game.field {
     //     for cell in col {
@@ -195,6 +233,7 @@ fn main() {
     //     println!();
     // }
 
+    /*
     // Change this to OpenGL::V2_1 if not working.
     let opengl = OpenGL::V4_5;
 
@@ -215,6 +254,34 @@ fn main() {
     while let Some(e) = events.next(&mut window) {
         if let Some(args) = e.render_args() {
             app.render(&args, &game);
+        }
+
+        if let Some(args) = e.update_args() {
+            app.update(&args);
+        }
+    }
+    */
+
+    // Change this to OpenGL::V2_1 if not working.
+    let opengl = OpenGL::V3_2;
+
+    // Create a Glutin window.
+    let mut window: Window = WindowSettings::new("spinning-square", [200, 200])
+        .graphics_api(opengl)
+        .exit_on_esc(true)
+        .build()
+        .unwrap();
+
+    // Create a new game and run it.
+    let mut app = App {
+        gl: GlGraphics::new(opengl),
+        rotation: 0.0,
+    };
+
+    let mut events = Events::new(EventSettings::new());
+    while let Some(e) = events.next(&mut window) {
+        if let Some(args) = e.render_args() {
+            app.render(&args);
         }
 
         if let Some(args) = e.update_args() {
