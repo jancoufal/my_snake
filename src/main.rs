@@ -5,12 +5,14 @@ extern crate piston;
 
 use glutin_window::GlutinWindow as Window;
 use graphics::math::Scalar;
+use graphics::rectangle;
 use opengl_graphics::{GlGraphics, OpenGL};
 use piston::event_loop::{EventSettings, Events};
 use piston::input::{RenderArgs, RenderEvent, UpdateArgs, UpdateEvent};
 use piston::window::WindowSettings;
-use std::cell::RefCell;
 use piston::Size;
+use std::cell::RefCell;
+use graphics::types::Rectangle;
 
 static CELL_CODE_INIT_HEAD: i32 = 1;
 static CELL_CODE_EMPTY: i32 = 0;
@@ -148,6 +150,7 @@ struct RenderSettings {
     viewport_size: Point2D<usize>,
     grid_size: Point2D<usize>,
     square_size: Point2D<Scalar>,
+    square: Rectangle,
 }
 
 impl RenderSettings {
@@ -155,13 +158,21 @@ impl RenderSettings {
     fn new(viewport_size: [usize; 2], grid_size: [usize; 2]) -> RenderSettings {
         let viewport_size = Point2D::new_from_array(viewport_size);
         let grid_size = Point2D::new_from_array(grid_size);
+        let square_size = Point2D {
+            x: viewport_size.x as Scalar / grid_size.x as Scalar,
+            y: viewport_size.y as Scalar / grid_size.y as Scalar,
+        };
+        
         RenderSettings {
             viewport_size,
             grid_size,
-            square_size: Point2D {
-                x: viewport_size.x as Scalar / grid_size.x as Scalar,
-                y: viewport_size.y as Scalar / grid_size.y as Scalar,
-            },
+            square_size,
+            square: rectangle::rectangle_by_corners(
+                0.0,
+                0.0,
+                square_size.x as f64,
+                square_size.y as f64,
+            )
         }
     }
 
@@ -178,8 +189,7 @@ impl RenderSettings {
 }
 
 struct App {
-    gl: GlGraphics, // OpenGL drawing backend.
-    rotation: f64,  // Rotation for the square.
+    gl: GlGraphics,
 }
 
 impl App {
@@ -193,10 +203,9 @@ impl App {
         const DARK: [f32; 4] = [0.1, 0.1, 0.1, 1.0];
         const GRAY: [f32; 4] = [0.5, 0.5, 0.5, 1.0];
         const RED: [f32; 4] = [1.0, 0.0, 0.0, 1.0];
+        const BLUE: [f32; 4] = [0.2, 0.0, 1.0, 1.0];
         const YELLOW: [f32; 4] = [1.0, 1.0, 0.0, 1.0];
-
-        let square = rectangle::square(0.0, 0.0, 50.0);
-        let mut counter = 0;
+        const MAGENTA: [f32; 4] = [1.0, 0.0, 0.9, 1.0];
 
         self.gl.draw(args.viewport(), |c, gl| {
             // Clear the screen.
@@ -207,31 +216,20 @@ impl App {
 
                     let st = render_settings.get_square_trans(x, y);
 
-                    let transform = c.transform
-                        .trans(st.x, st.y)
-                        ;
+                    let transform = c.transform.trans(st.x, st.y);
 
-                    // let color = match cell.borrow().get_type(game.snake_length as i32) {
-                    //     CellType::Empty => DARK,
-                    //     CellType::Border => BROWN,
-                    //     CellType::SnakeHead => GREEN,
-                    //     CellType::SnakeBody => GREEN,
-                    //     CellType::SnakeTail => GREEN,
-                    //     CellType::Food => RED,
-                    // };
-                    //
-                    let color = match counter % 5 {
-                        0 => RED,
-                        1 => YELLOW,
-                        2 => GREEN,
-                        3 => DARK,
-                        _ => BROWN,
+                    let color = match cell.borrow().get_type(game.snake_length as i32) {
+                        CellType::Empty => DARK,
+                        CellType::Border => BROWN,
+                        CellType::SnakeHead => GREEN,
+                        CellType::SnakeBody => GREEN,
+                        CellType::SnakeTail => GREEN,
+                        CellType::Food => RED,
                     };
 
-                    counter += 1;
-
-                    rectangle(color, square, transform, gl);
-                    // line(BLACK, 1.0, );
+                    rectangle(color, render_settings.square, transform, gl);
+                    line(BLACK, 1.0, [0., 0., render_settings.square_size.x, 0.], transform, gl);
+                    line(BLACK, 1.0, [0., 0., 0., render_settings.square_size.y], transform, gl);
                 }
             }
         });
@@ -239,7 +237,7 @@ impl App {
 
     fn update(&mut self, args: &UpdateArgs) {
         // Rotate 2 radians per second.
-        self.rotation += 2.0 * args.dt;
+        // self.rotation += 2.0 * args.dt;
     }
 }
 
@@ -308,10 +306,10 @@ fn main() {
     // Create a new game and run it.
     let mut app = App {
         gl: GlGraphics::new(opengl),
-        rotation: 0.0,
     };
 
     let mut events = Events::new(EventSettings::new());
+
     while let Some(e) = events.next(&mut window) {
         if let Some(args) = e.render_args() {
             app.render(&args, &render_settings, &game);
