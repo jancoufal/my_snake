@@ -6,13 +6,13 @@ extern crate piston;
 use glutin_window::GlutinWindow as Window;
 use graphics::math::Scalar;
 use graphics::rectangle;
+use graphics::types::Rectangle;
 use opengl_graphics::{GlGraphics, OpenGL};
 use piston::event_loop::{EventSettings, Events};
 use piston::input::{RenderArgs, RenderEvent, UpdateArgs, UpdateEvent};
 use piston::window::WindowSettings;
 use piston::Size;
-use std::cell::RefCell;
-use graphics::types::Rectangle;
+use std::rc::Rc;
 
 static CELL_CODE_INIT_HEAD: i32 = 1;
 static CELL_CODE_EMPTY: i32 = 0;
@@ -103,7 +103,7 @@ enum GameState {
 struct Game {
     state: GameState,
     field_size: Point2D<usize>,
-    field: Vec<Vec<RefCell<Cell>>>,
+    field: Vec<Vec<Rc<Cell>>>,
     // snake: Vec<Weak<RefCell<Cell>>>,
     direction: Direction,
     snake_length: usize,
@@ -113,9 +113,9 @@ struct Game {
 impl Game {
     fn new(cols: usize, rows: usize) -> Game {
 
-        let mut field: Vec<Vec<RefCell<Cell>>> = Vec::new();
+        let mut field: Vec<Vec<Rc<Cell>>> = Vec::new();
         for r in 0..rows {
-            let mut cell_row: Vec<RefCell<Cell>> = Vec::new();
+            let mut cell_row: Vec<Rc<Cell>> = Vec::new();
             for c in 0..cols {
                 let new_cell = match (c, r) {
                     (0, _) => Cell::new_border(),
@@ -125,7 +125,7 @@ impl Game {
                     (_, _) if c == cols/2 && r == rows/2 => Cell::new_head(),
                     (_, _) => Cell::new_empty(),
                 };
-                cell_row.push(RefCell::new(new_cell));
+                cell_row.push(Rc::new(new_cell));
             }
             field.push(cell_row);
         }
@@ -218,7 +218,7 @@ impl App {
 
                     let transform = c.transform.trans(st.x, st.y);
 
-                    let color = match cell.borrow().get_type(game.snake_length as i32) {
+                    let color = match cell.get_type(game.snake_length as i32) {
                         CellType::Empty => DARK,
                         CellType::Border => BROWN,
                         CellType::SnakeHead => BLUE,
@@ -249,49 +249,6 @@ fn main() {
         [1000, 1000],
         game.field_size.as_array(),
     );
-
-    // for col in game.field {
-    //     for cell in col {
-    //         print!("{}", match cell.cell_type {
-    //             CellType::Empty => " ".to_string(),
-    //             CellType::Border => "#".to_string(),
-    //             CellType::SnakeHead => "@".to_string(),
-    //             CellType::SnakeBody => "*".to_string(),
-    //             CellType::SnakeTail => ".".to_string(),
-    //             CellType::Food => "Q".to_string(),
-    //         });
-    //     }
-    //     println!();
-    // }
-
-    /*
-    // Change this to OpenGL::V2_1 if not working.
-    let opengl = OpenGL::V4_5;
-
-    // Create a Glutin window.
-    let mut window: Window = WindowSettings::new("my-snake", [500, 500])
-        .graphics_api(opengl)
-        .exit_on_esc(true)
-        .build()
-        .unwrap();
-
-    // Create a new game and run it.
-    let mut app = App {
-        gl: GlGraphics::new(opengl),
-        rotation: 0.0,
-    };
-
-    let mut events = Events::new(EventSettings::new());
-    while let Some(e) = events.next(&mut window) {
-        if let Some(args) = e.render_args() {
-            app.render(&args, &game);
-        }
-
-        if let Some(args) = e.update_args() {
-            app.update(&args);
-        }
-    }
-    */
 
     // Change this to OpenGL::V2_1 if not working.
     let opengl = OpenGL::V3_2;
