@@ -4,12 +4,13 @@ extern crate opengl_graphics;
 extern crate piston;
 
 use glutin_window::GlutinWindow as Window;
+use graphics::math::Scalar;
 use opengl_graphics::{GlGraphics, OpenGL};
 use piston::event_loop::{EventSettings, Events};
 use piston::input::{RenderArgs, RenderEvent, UpdateArgs, UpdateEvent};
 use piston::window::WindowSettings;
 use std::cell::RefCell;
-use graphics::math::Scalar;
+use piston::Size;
 
 static CELL_CODE_INIT_HEAD: i32 = 1;
 static CELL_CODE_EMPTY: i32 = 0;
@@ -18,9 +19,23 @@ static CELL_CODE_FOOD: i32 = -2;
 
 
 #[derive(Debug, Copy, Clone)]
-struct Point2D {
-    x: i32,
-    y: i32,
+struct Point2D<T> {
+    x: T,
+    y: T,
+}
+
+impl<T> Point2D<T> where T: Copy {
+    fn new(x: T, y: T) -> Point2D<T> {
+        Point2D { x, y }
+    }
+
+    fn new_from_array(xy: [T; 2]) -> Point2D<T> {
+        Point2D { x: xy[0], y: xy[1] }
+    }
+
+    fn as_array(&self) -> [T; 2] {
+        [self.x, self.y]
+    }
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -85,6 +100,7 @@ enum GameState {
 #[derive(Debug)]
 struct Game {
     state: GameState,
+    field_size: Point2D<usize>,
     field: Vec<Vec<RefCell<Cell>>>,
     // snake: Vec<Weak<RefCell<Cell>>>,
     direction: Direction,
@@ -114,6 +130,7 @@ impl Game {
 
         Game {
             state: GameState::Paused,
+            field_size: Point2D::new(cols, rows),
             field,
             direction: Direction::None,
             snake_length: 1usize,
@@ -127,14 +144,49 @@ impl Game {
     }
 }
 
+struct RenderSettings {
+    viewport_size: Point2D<usize>,
+    grid_size: Point2D<usize>,
+    square_size: Point2D<Scalar>,
+}
+
+impl RenderSettings {
+
+    fn new(viewport_size: [usize; 2], grid_size: [usize; 2]) -> RenderSettings {
+        let viewport_size = Point2D::new_from_array(viewport_size);
+        let grid_size = Point2D::new_from_array(grid_size);
+        RenderSettings {
+            viewport_size,
+            grid_size,
+            square_size: Point2D {
+                x: viewport_size.x as Scalar / grid_size.x as Scalar,
+                y: viewport_size.y as Scalar / grid_size.y as Scalar,
+            },
+        }
+    }
+
+    fn get_viewport_size(&self) -> Size {
+        Size { width: self.viewport_size.x as f64, height: self.viewport_size.y as f64 }
+    }
+
+    fn get_square_trans(&self, x_index: usize, y_index: usize) -> Point2D<Scalar> {
+        Point2D {
+            x: self.square_size.x * x_index as Scalar,
+            y: self.square_size.y * y_index as Scalar,
+        }
+    }
+}
+
 struct App {
     gl: GlGraphics, // OpenGL drawing backend.
     rotation: f64,  // Rotation for the square.
 }
 
 impl App {
-    fn render(&mut self, args: &RenderArgs, game: &Game) {
+    fn render(&mut self, args: &RenderArgs, render_settings: &RenderSettings, game: &Game) {
         use graphics::*;
+
+        const BLACK: [f32; 4] = [0.0, 0.0, 0.0, 1.0];
 
         const BROWN: [f32; 4] = [1.0, 0.5, 0.2, 1.0];
         const GREEN: [f32; 4] = [0.0, 1.0, 0.0, 1.0];
@@ -153,8 +205,10 @@ impl App {
             for (y, field_row) in game.field.iter().enumerate() {
                 for (x, cell) in field_row.iter().enumerate() {
 
+                    let st = render_settings.get_square_trans(x, y);
+
                     let transform = c.transform
-                        .trans((x as Scalar) * 50. + 25., (y as Scalar) * 50.0 + 25.)
+                        .trans(st.x, st.y)
                         ;
 
                     // let color = match cell.borrow().get_type(game.snake_length as i32) {
@@ -177,6 +231,7 @@ impl App {
                     counter += 1;
 
                     rectangle(color, square, transform, gl);
+                    // line(BLACK, 1.0, );
                 }
             }
         });
@@ -191,6 +246,11 @@ impl App {
 fn main() {
     let (cols, rows) = (11, 11);
     let game = Game::new(cols, rows);
+
+    let render_settings = RenderSettings::new(
+        [1000, 1000],
+        game.field_size.as_array(),
+    );
 
     // for col in game.field {
     //     for cell in col {
@@ -239,7 +299,7 @@ fn main() {
     let opengl = OpenGL::V3_2;
 
     // Create a Glutin window.
-    let mut window: Window = WindowSettings::new("spinning-square", [1000, 1000])
+    let mut window: Window = WindowSettings::new("my-snake", render_settings.get_viewport_size())
         .graphics_api(opengl)
         .exit_on_esc(true)
         .build()
@@ -254,7 +314,7 @@ fn main() {
     let mut events = Events::new(EventSettings::new());
     while let Some(e) = events.next(&mut window) {
         if let Some(args) = e.render_args() {
-            app.render(&args, &game);
+            app.render(&args, &render_settings, &game);
         }
 
         if let Some(args) = e.update_args() {
