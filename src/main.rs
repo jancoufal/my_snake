@@ -4,12 +4,12 @@ extern crate opengl_graphics;
 extern crate piston;
 
 use glutin_window::GlutinWindow as Window;
-use graphics::math::Scalar;
 use opengl_graphics::{GlGraphics, OpenGL};
 use piston::event_loop::{EventSettings, Events};
 use piston::input::{RenderArgs, RenderEvent, UpdateArgs, UpdateEvent};
 use piston::window::WindowSettings;
 use std::cell::RefCell;
+use graphics::math::Scalar;
 
 static CELL_CODE_INIT_HEAD: i32 = 1;
 static CELL_CODE_EMPTY: i32 = 0;
@@ -96,21 +96,21 @@ impl Game {
     fn new(cols: usize, rows: usize) -> Game {
 
         let mut field: Vec<Vec<RefCell<Cell>>> = Vec::new();
-        // for r in 0..rows {
-        //     let mut cell_row: Vec<RefCell<Cell>> = Vec::new();
-        //     for c in 0..cols {
-        //         let new_cell = match (c, r) {
-        //             (0, _) => Cell::new_border(),
-        //             (_, _) if c == cols-1 => Cell::new_border(),
-        //             (_, 0) => Cell::new_border(),
-        //             (_, _) if r == rows-1 => Cell::new_border(),
-        //             (_, _) if c == cols/2 && r == rows/2 => Cell::new_head(),
-        //             (_, _) => Cell::new_empty(),
-        //         };
-        //         cell_row.push(RefCell::new(new_cell));
-        //     }
-        //     field.push(cell_row);
-        // }
+        for r in 0..rows {
+            let mut cell_row: Vec<RefCell<Cell>> = Vec::new();
+            for c in 0..cols {
+                let new_cell = match (c, r) {
+                    (0, _) => Cell::new_border(),
+                    (_, _) if c == cols-1 => Cell::new_border(),
+                    (_, 0) => Cell::new_border(),
+                    (_, _) if r == rows-1 => Cell::new_border(),
+                    (_, _) if c == cols/2 && r == rows/2 => Cell::new_head(),
+                    (_, _) => Cell::new_empty(),
+                };
+                cell_row.push(RefCell::new(new_cell));
+            }
+            field.push(cell_row);
+        }
 
         Game {
             state: GameState::Paused,
@@ -127,71 +127,34 @@ impl Game {
     }
 }
 
-
-pub struct App {
+struct App {
     gl: GlGraphics, // OpenGL drawing backend.
     rotation: f64,  // Rotation for the square.
 }
 
 impl App {
-    fn render(&mut self, args: &RenderArgs) {
-        use graphics::*;
-
-        const GREEN: [f32; 4] = [0.0, 1.0, 0.0, 1.0];
-        const RED: [f32; 4] = [1.0, 0.0, 0.0, 1.0];
-
-        let square = rectangle::square(0.0, 0.0, 50.0);
-        let rotation = self.rotation;
-        let (x, y) = (args.window_size[0] / 2.0, args.window_size[1] / 2.0);
-
-        self.gl.draw(args.viewport(), |c, gl| {
-            // Clear the screen.
-            clear(GREEN, gl);
-
-            let transform = c
-                .transform
-                .trans(x, y)
-                .rot_rad(rotation)
-                .trans(-25.0, -25.0);
-
-            // Draw a box rotating around the middle of the screen.
-            rectangle(RED, square, transform, gl);
-        });
-    }
-
-    fn update(&mut self, args: &UpdateArgs) {
-        // Rotate 2 radians per second.
-        self.rotation += 2.0 * args.dt;
-    }
-}
-
-
-struct AppX {
-    gl: GlGraphics, // OpenGL drawing backend.
-    rotation: f64,  // Rotation for the square.
-}
-
-impl AppX {
     fn render(&mut self, args: &RenderArgs, game: &Game) {
         use graphics::*;
 
         const BROWN: [f32; 4] = [1.0, 0.5, 0.2, 1.0];
         const GREEN: [f32; 4] = [0.0, 1.0, 0.0, 1.0];
         const DARK: [f32; 4] = [0.1, 0.1, 0.1, 1.0];
+        const GRAY: [f32; 4] = [0.5, 0.5, 0.5, 1.0];
         const RED: [f32; 4] = [1.0, 0.0, 0.0, 1.0];
         const YELLOW: [f32; 4] = [1.0, 1.0, 0.0, 1.0];
 
         let square = rectangle::square(0.0, 0.0, 50.0);
+        let mut counter = 0;
 
         self.gl.draw(args.viewport(), |c, gl| {
             // Clear the screen.
-            clear(GREEN, gl);
+            clear(GRAY, gl);
 
-            // for (y, field_row) in game.field.iter().enumerate() {
-            //     for (x, cell) in field_row.iter().enumerate() {
+            for (y, field_row) in game.field.iter().enumerate() {
+                for (x, cell) in field_row.iter().enumerate() {
+
                     let transform = c.transform
-                        // .trans(x as Scalar + 25., y as Scalar + 25.)
-                        .trans(25., 25.)
+                        .trans((x as Scalar) * 50. + 25., (y as Scalar) * 50.0 + 25.)
                         ;
 
                     // let color = match cell.borrow().get_type(game.snake_length as i32) {
@@ -202,10 +165,20 @@ impl AppX {
                     //     CellType::SnakeTail => GREEN,
                     //     CellType::Food => RED,
                     // };
+                    //
+                    let color = match counter % 5 {
+                        0 => RED,
+                        1 => YELLOW,
+                        2 => GREEN,
+                        3 => DARK,
+                        _ => BROWN,
+                    };
 
-                    rectangle(RED, square, transform, gl);
-                // }
-            // }
+                    counter += 1;
+
+                    rectangle(color, square, transform, gl);
+                }
+            }
         });
     }
 
@@ -216,8 +189,8 @@ impl AppX {
 }
 
 fn main() {
-    // let (cols, rows) = (10, 10);
-    // let game = Game::new(cols, rows);
+    let (cols, rows) = (11, 11);
+    let game = Game::new(cols, rows);
 
     // for col in game.field {
     //     for cell in col {
@@ -266,7 +239,7 @@ fn main() {
     let opengl = OpenGL::V3_2;
 
     // Create a Glutin window.
-    let mut window: Window = WindowSettings::new("spinning-square", [200, 200])
+    let mut window: Window = WindowSettings::new("spinning-square", [1000, 1000])
         .graphics_api(opengl)
         .exit_on_esc(true)
         .build()
@@ -281,7 +254,7 @@ fn main() {
     let mut events = Events::new(EventSettings::new());
     while let Some(e) = events.next(&mut window) {
         if let Some(args) = e.render_args() {
-            app.render(&args);
+            app.render(&args, &game);
         }
 
         if let Some(args) = e.update_args() {
