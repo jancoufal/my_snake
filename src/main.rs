@@ -221,9 +221,9 @@ impl App {
                     let color = match cell.borrow().get_type(game.snake_length as i32) {
                         CellType::Empty => DARK,
                         CellType::Border => BROWN,
-                        CellType::SnakeHead => GREEN,
+                        CellType::SnakeHead => BLUE,
                         CellType::SnakeBody => GREEN,
-                        CellType::SnakeTail => GREEN,
+                        CellType::SnakeTail => YELLOW,
                         CellType::Food => RED,
                     };
 
