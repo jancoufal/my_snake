@@ -1,4 +1,7 @@
 mod point_2d;
+
+use std::cell::RefCell;
+use std::cmp::PartialEq;
 use crate::point_2d::Point2D;
 
 use graphics::math::Scalar;
@@ -22,13 +25,41 @@ pub enum Direction {
 }
 
 #[derive(Debug, Copy, Clone)]
+pub enum SnakeBodyPart {
+    Head(usize),
+    Body(usize),
+    Tail(usize),
+}
+
+impl PartialEq for SnakeBodyPart {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (SnakeBodyPart::Head(_), SnakeBodyPart::Head(_)) => true,
+            (SnakeBodyPart::Body(_), SnakeBodyPart::Body(_)) => true,
+            (SnakeBodyPart::Tail(_), SnakeBodyPart::Tail(_)) => true,
+            _ => false,
+        }
+    }
+}
+
+#[derive(Debug, Copy, Clone)]
 pub enum CellType {
     Empty,
     Border,
-    SnakeHead,
-    SnakeBody,
-    SnakeTail,
+    Snake(SnakeBodyPart),
     Food,
+}
+
+impl PartialEq for CellType {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (CellType::Empty, CellType::Empty) => true,
+            (CellType::Border, CellType::Border) => true,
+            (CellType::Food, CellType::Food) => true,
+            (CellType::Snake(part1), CellType::Snake(part2)) => part1 == part2,
+            _ => false,
+        }
+    }
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -79,82 +110,70 @@ impl RenderSettings {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug)]
 pub struct Cell {
-    pub int_code: i32,
-}
-
-impl Cell {
-    pub fn new_border() -> Cell { Cell { int_code: CELL_CODE_BORDER } }
-    pub fn new_empty() -> Cell { Cell { int_code: CELL_CODE_EMPTY } }
-    pub fn new_food() -> Cell { Cell { int_code: CELL_CODE_FOOD } }
-    pub fn new_head() -> Cell { Cell { int_code: CELL_CODE_INIT_HEAD } }
-
-    pub fn get_type(&self, snake_length: i32) -> CellType {
-        match self.int_code {
-            // CELL_CODE_EMPTY => CellType::Empty,
-            // CELL_CODE_BORDER => CellType::Border,
-            // CELL_CODE_FOOD => CellType::Food,
-            0 => CellType::Empty,
-            -1 => CellType::Border,
-            -2 => CellType::Food,
-            _ if self.int_code == snake_length => CellType::SnakeHead,
-            1 => CellType::SnakeTail, // todo: not really true
-            _ => CellType::SnakeBody,
-        }
-    }
+    pub pos: Point2D<i32>,
+    pub cell_type: CellType,
+    link_to_tail: Option<Rc<Cell>>,
 }
 
 #[derive(Debug)]
 pub struct Game {
     pub state: GameState,
     pub field_size: Point2D<usize>,
-    pub field: Vec<Vec<Rc<Cell>>>,
-    pub snake: Vec<Rc<Cell>>,
+    pub field: Vec<Vec<Rc<RefCell<Cell>>>>,
+    pub snake_head: Rc<RefCell<Cell>>,
     pub direction: Direction,
     pub snake_length: usize,
     pub step_count: usize,
 }
 
 impl Game {
-    pub fn new(cols: usize, rows: usize) -> Game {
+    pub fn new(cols: usize, rows: usize) -> Result<Game, String> {
 
-        let snake_head = Rc::new(Cell::new_head());
+        if cols < 5 || rows < 5 {
+            return Err(format!("Game field must be 5x5 cells at least. {}x{} entered.", cols, rows));
+        }
 
-        let mut snake: Vec<Rc<Cell>> = Vec::new();
-        snake.push(Rc::clone(&snake_head));
+        let snake_head_pos = Point2D::new((cols / 2) as i32, (rows / 2) as i32);
+        let mut snake_head: Option<Rc<RefCell<Cell>>> = None;
 
-        let mut field: Vec<Vec<Rc<Cell>>> = Vec::new();
+        let mut field: Vec<Vec<Rc<RefCell<Cell>>>> = Vec::new();
         for r in 0..rows {
-            let mut cell_row: Vec<Rc<Cell>> = Vec::new();
+            let mut cell_row: Vec<Rc<RefCell<Cell>>> = Vec::new();
             for c in 0..cols {
-                let new_cell = match (c, r) {
-                    (0, _) => Rc::new(Cell::new_border()),
-                    (_, _) if c == cols-1 => Rc::new(Cell::new_border()),
-                    (_, 0) => Rc::new(Cell::new_border()),
-                    (_, _) if r == rows-1 => Rc::new(Cell::new_border()),
-                    (_, _) if c == cols/2 && r == rows/2 => Rc::clone(&snake_head),
-                    (_, _) => Rc::new(Cell::new_empty()),
-                };
+                let pos = Point2D::new(r as i32, c as i32);
+                let new_cell = Rc::new(RefCell::new(Cell {
+                    pos,
+                    cell_type: match (c, r) {
+                        (0, _) => CellType::Border,
+                        (_, _) if c == cols-1 => CellType::Border,
+                        (_, 0) => CellType::Border,
+                        (_, _) if r == rows-1 => CellType::Border,
+                        (_, _) if pos == snake_head_pos => CellType::Snake(SnakeBodyPart::Head(1)),
+                        (_, _) => CellType::Empty,
+                    },
+                    link_to_tail: None,
+                }));
+                
+                if new_cell.borrow().cell_type == CellType::Snake(SnakeBodyPart::Head(r)) {
+                    snake_head = Some(Rc::clone(&new_cell));
+                }
+
                 cell_row.push(new_cell);
             }
             field.push(cell_row);
         }
 
-        Game {
+        Ok(Game {
             state: GameState::Paused,
             field_size: Point2D::new(cols, rows),
             field,
-            snake,
+            snake_head: snake_head.unwrap(),
             direction: Direction::Right,
             snake_length: 1usize,
             step_count: 0usize,
-        }
-    }
-
-    pub fn play(&mut self, direction: Direction) {
-        self.state = GameState::Playing;
-        self.direction = direction;
+        })
     }
 
     pub fn cell_iter(&self) -> CellIterator {
@@ -163,11 +182,51 @@ impl Game {
             iter_position: Point2D::new(0, 0),
         }
     }
+
+    pub fn play(&mut self, direction: Direction) {
+        self.state = GameState::Playing;
+        self.direction = direction;
+    }
+
+    pub fn set_movement_direction(&mut self, direction: Direction) {
+        // we cannot move in opposite direction
+        self.direction = match (self.direction, direction) {
+            (Direction::Right, Direction::Left) => Direction::Right,
+            (Direction::Left, Direction::Right) => Direction::Left,
+            (Direction::Up, Direction::Down) => Direction::Up,
+            (Direction::Down, Direction::Up) => Direction::Down,
+            (_, _) => direction,
+        };
+    }
+
+    pub fn update_game_state(&mut self) {
+        let new_head_pos = self.snake_head.borrow().pos + match self.direction {
+            Direction::Right => Point2D::new(1i32, 0i32),
+            Direction::Left => Point2D::new(-1i32, 0i32),
+            Direction::Up => Point2D::new(0i32, -1i32),
+            Direction::Down => Point2D::new(0i32, 1i32),
+        };
+
+        // todo: collision (border hit, self bite, apple)
+
+        // move snake body
+        let mut new_head_cell = self.field
+            .get_mut(new_head_pos.y as usize).unwrap()
+            .get_mut(new_head_pos.x as usize).unwrap();
+        
+        new_head_cell.borrow_mut().cell_type = CellType::Empty;
+        // new_head_cell.cell_type = self.snake_head.cell_type;
+    }
 }
 
 pub struct CellIterator<'a> {
     game: &'a Game,
     iter_position: Point2D<usize>,
+}
+
+pub struct CellContext {
+    pub cell: Rc<RefCell<Cell>>,
+    pub cell_position: Point2D<Scalar>,
 }
 
 impl<'a> Iterator for CellIterator<'a> {
@@ -195,7 +254,3 @@ impl<'a> Iterator for CellIterator<'a> {
     }
 }
 
-pub struct CellContext {
-    pub cell: Rc<Cell>,
-    pub cell_position: Point2D<Scalar>,
-}

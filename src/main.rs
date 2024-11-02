@@ -3,6 +3,7 @@ extern crate graphics;
 extern crate opengl_graphics;
 extern crate piston;
 
+use std::ops::Deref;
 use glutin_window::GlutinWindow as Window;
 use graphics::rectangle;
 use opengl_graphics::{GlGraphics, OpenGL};
@@ -25,6 +26,7 @@ impl App {
 
         const BROWN: [f32; 4] = [1.0, 0.5, 0.2, 1.0];
         const GREEN: [f32; 4] = [0.0, 1.0, 0.0, 1.0];
+        const GREEN_DARK: [f32; 4] = [0.0, 0.75, 0.0, 1.0];
         const DARK: [f32; 4] = [0.1, 0.1, 0.1, 1.0];
         const GRAY: [f32; 4] = [0.5, 0.5, 0.5, 1.0];
         const RED: [f32; 4] = [1.0, 0.0, 0.0, 1.0];
@@ -44,12 +46,14 @@ impl App {
                     cell_context.cell_position.y * render_settings.square_size.y,
                 );
 
-                let color = match cell_context.cell.get_type(game.snake_length as i32) {
+                let color = match cell_context.cell.borrow().cell_type {
                     CellType::Empty => DARK,
                     CellType::Border => BROWN,
-                    CellType::SnakeHead => BLUE,
-                    CellType::SnakeBody => GREEN,
-                    CellType::SnakeTail => YELLOW,
+                    CellType::Snake(snake_body_part) => match snake_body_part {
+                        SnakeBodyPart::Head(_) => GREEN,
+                        SnakeBodyPart::Body(_) => YELLOW,
+                        SnakeBodyPart::Tail(_) => GREEN_DARK,
+                    },
                     CellType::Food => RED,
                 };
 
@@ -69,7 +73,13 @@ impl App {
 
 fn main() {
     let (cols, rows) = (11, 11);
-    let game = Game::new(cols, rows);
+    let game = match Game::new(cols, rows) {
+        Ok(game) => game,
+        Err(e) => {
+            eprintln!("Failed to initialize game: {}", e);
+            std::process::exit(1);
+        },
+    };
 
     let render_settings = RenderSettings::new(
         [1000, 1000],
