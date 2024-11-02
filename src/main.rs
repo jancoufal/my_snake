@@ -7,6 +7,8 @@ use std::ops::Deref;
 use glutin_window::GlutinWindow as Window;
 use graphics::rectangle;
 use opengl_graphics::{GlGraphics, OpenGL};
+use piston::Button::Keyboard;
+use piston::{ButtonEvent, Key};
 use piston::event_loop::{EventSettings, Events};
 use piston::input::{RenderArgs, RenderEvent, UpdateArgs, UpdateEvent};
 use piston::window::WindowSettings;
@@ -73,7 +75,7 @@ impl App {
 
 fn main() {
     let (cols, rows) = (11, 11);
-    let game = match Game::new(cols, rows) {
+    let mut game = match Game::new(cols, rows) {
         Ok(game) => game,
         Err(e) => {
             eprintln!("Failed to initialize game: {}", e);
@@ -102,14 +104,35 @@ fn main() {
     };
 
     let mut events = Events::new(EventSettings::new());
+    let mut dt: f64 = 0.0;
 
     while let Some(e) = events.next(&mut window) {
-        if let Some(args) = e.render_args() {
-            app.render(&args, &render_settings, &game);
+        if let Some(args) = e.button_args() {
+            match args.button {
+                Keyboard(key) => match key {
+                    Key::Up => game.set_movement_direction(Direction::Up),
+                    Key::Down => game.set_movement_direction(Direction::Down),
+                    Key::Left => game.set_movement_direction(Direction::Left),
+                    Key::Right => game.set_movement_direction(Direction::Right),
+                    _ => {},
+                },
+                _ => {},
+            }
+            println!("{:?}", args);
         }
 
         if let Some(args) = e.update_args() {
             app.update(&args);
+            dt += args.dt;
+        }
+        
+        if dt > 1.0 {
+            game.update_game_state();
+            dt = 0.0;
+        }
+
+        if let Some(args) = e.render_args() {
+            app.render(&args, &render_settings, &game);
         }
     }
 }

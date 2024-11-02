@@ -214,8 +214,10 @@ impl Game {
             .get_mut(new_head_pos.y as usize).unwrap()
             .get_mut(new_head_pos.x as usize).unwrap();
         
-        new_head_cell.borrow_mut().cell_type = CellType::Empty;
-        // new_head_cell.cell_type = self.snake_head.cell_type;
+        new_head_cell.borrow_mut().cell_type = CellType::Snake(SnakeBodyPart::Head(1));
+        self.snake_head.borrow_mut().cell_type = CellType::Empty;
+        
+        self.snake_head = Rc::clone(&new_head_cell);
     }
 }
 
