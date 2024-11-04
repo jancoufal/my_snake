@@ -84,7 +84,7 @@ fn main() {
     };
 
     let render_settings = RenderSettings::new(
-        [1000, 1000],
+        [100, 100],
         game.field_size.as_array(),
     );
 
@@ -126,7 +126,7 @@ fn main() {
             dt += args.dt;
         }
         
-        if dt > 1.0 {
+        if dt > 0.5 {
             game.update_game_state();
             dt = 0.0;
         }
