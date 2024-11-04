@@ -74,7 +74,7 @@ impl App {
 }
 
 fn main() {
-    let (cols, rows) = (11, 11);
+    let (cols, rows) = (100, 100);
     let mut game = match Game::new(cols, rows) {
         Ok(game) => game,
         Err(e) => {
@@ -84,7 +84,7 @@ fn main() {
     };
 
     let render_settings = RenderSettings::new(
-        [100, 100],
+        [1000, 1000],
         game.field_size.as_array(),
     );
 
@@ -105,6 +105,7 @@ fn main() {
 
     let mut events = Events::new(EventSettings::new());
     let mut dt: f64 = 0.0;
+    let mut render_now = true;
 
     while let Some(e) = events.next(&mut window) {
         if let Some(args) = e.button_args() {
@@ -126,13 +127,17 @@ fn main() {
             dt += args.dt;
         }
         
-        if dt > 0.5 {
+        if dt > 0.01 {
             game.update_game_state();
             dt = 0.0;
+            render_now = true;
         }
 
-        if let Some(args) = e.render_args() {
-            app.render(&args, &render_settings, &game);
+        if render_now {
+            if let Some(args) = e.render_args() {
+                app.render(&args, &render_settings, &game);
+                render_now = false;
+            }
         }
     }
 }

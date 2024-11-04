@@ -138,7 +138,7 @@ impl Game {
         let mut field: Vec<Rc<RefCell<Cell>>> = Vec::with_capacity(cols * rows);
         
         // put snake head in the middle
-        let snake_head_index = (cols * rows) / 2;
+        let snake_head_index = (cols * rows) / 2 + rows / 2;
 
         for index in 0..(cols * rows) {
             let pos = Point2D::new(index / cols, index % cols);
