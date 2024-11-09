@@ -44,6 +44,7 @@ impl PartialEq for SnakeBodyPart {
 
 #[derive(Debug, Copy, Clone)]
 pub enum CellType {
+    Uninitialized,  // for render optimization
     Empty,
     Border,
     Snake(SnakeBodyPart),
@@ -99,8 +100,8 @@ impl RenderSettings {
             square: rectangle::rectangle_by_corners(
                 0.0,
                 0.0,
-                square_size.x as f64,
-                square_size.y as f64,
+                square_size.x - 1.,
+                square_size.y - 1.,
             )
         }
     }
@@ -114,6 +115,7 @@ impl RenderSettings {
 pub struct Cell {
     pub pos: Point2D<i32>,
     pub cell_type: CellType,
+    pub rendered_cell_type: CellType,   // for render optimization
     link_to_tail: Option<Rc<Cell>>,
 }
 
@@ -156,6 +158,7 @@ impl Game {
             field.push(Rc::new(RefCell::new(Cell {
                 pos: pos_i32,
                 cell_type,
+                rendered_cell_type: CellType::Uninitialized,
                 link_to_tail: None,
             })));
         }
@@ -186,7 +189,7 @@ impl Game {
         )
     }
 
-    pub fn cell_iter(&self) -> CellIterator {
+    pub fn cell_iter_mut(&mut self) -> CellIterator {
         CellIterator {
             game: self,
             iter_index: 0,
@@ -217,21 +220,26 @@ impl Game {
     pub fn update_game_state(&mut self) {
         let head_pos_2d = self.get_point_from_index(self.snake_head_index);
 
-        let new_head_pos_2d = head_pos_2d + match self.direction {
+        let mut new_head_pos_2d = head_pos_2d + match self.direction {
             Direction::Right => Point2D::new(1i32, 0i32),
             Direction::Left => Point2D::new(-1i32, 0i32),
             Direction::Up => Point2D::new(0i32, -1i32),
             Direction::Down => Point2D::new(0i32, 1i32),
         };
         
-        println!(
-            "Game Update: Direction: {:?}, head_pos: {:?} -> {:?}",
-            self.direction,
-            head_pos_2d,
-            new_head_pos_2d,
-        );
+        // println!(
+        //     "Game Update: Direction: {:?}, head_pos: {:?} -> {:?}",
+        //     self.direction,
+        //     head_pos_2d,
+        //     new_head_pos_2d,
+        // );
 
         // todo: collision (border hit, self bite, apple)
+        
+        // debug
+        if self.get_index_from_point(new_head_pos_2d) >= self.field.len() {
+            new_head_pos_2d = Point2D::new(0, 0);
+        }
 
         // move snake body
         let new_head_cell = self.field

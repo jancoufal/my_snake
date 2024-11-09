@@ -3,25 +3,26 @@ extern crate graphics;
 extern crate opengl_graphics;
 extern crate piston;
 
-use std::ops::Deref;
 use glutin_window::GlutinWindow as Window;
+use graphics::math::Scalar;
 use graphics::rectangle;
 use opengl_graphics::{GlGraphics, OpenGL};
-use piston::Button::Keyboard;
-use piston::{ButtonEvent, Key};
 use piston::event_loop::{EventSettings, Events};
 use piston::input::{RenderArgs, RenderEvent, UpdateArgs, UpdateEvent};
 use piston::window::WindowSettings;
+use piston::Button::Keyboard;
+use piston::{ButtonEvent, Key};
 
 use my_snake::*;
 
 
 struct App {
     gl: GlGraphics,
+    dt: f64,
 }
 
 impl App {
-    fn render(&mut self, args: &RenderArgs, render_settings: &RenderSettings, game: &Game) {
+    fn render(&mut self, args: &RenderArgs, render_settings: &RenderSettings, game: &mut Game) {
         use graphics::*;
 
         const BLACK: [f32; 4] = [0.0, 0.0, 0.0, 1.0];
@@ -38,17 +39,36 @@ impl App {
 
         self.gl.draw(args.viewport(), |c, gl| {
             // Clear the screen.
-            clear(GRAY, gl);
+            clear(BLACK, gl);
 
+            rectangle(
+                RED,
+                render_settings.square,
+                c.transform
+                    .trans(
+                    render_settings.viewport_size.x as f64 / 2.,
+                    render_settings.viewport_size.y as f64 / 2.
+                    )
+                    .rot_rad(
+                        (self.dt) as Scalar / std::f64::consts::PI,
+                    )
+                    .trans(
+                    200.0 * f64::sin(self.dt),
+                    200.0 * f64::cos(self.dt)
+                ),
+                gl
+            );
 
-            for cell_context in game.cell_iter() {
-
+            // println!("frame...");
+            for cell_context in game.cell_iter_mut() {
+                let mut cell = cell_context.cell.borrow_mut();
                 let transform = c.transform.trans(
                     cell_context.cell_position.x * render_settings.square_size.x,
                     cell_context.cell_position.y * render_settings.square_size.y,
                 );
-
-                let color = match cell_context.cell.borrow().cell_type {
+            
+                let color = match cell.cell_type {
+                    CellType::Uninitialized => MAGENTA,
                     CellType::Empty => DARK,
                     CellType::Border => BROWN,
                     CellType::Snake(snake_body_part) => match snake_body_part {
@@ -58,23 +78,21 @@ impl App {
                     },
                     CellType::Food => RED,
                 };
-
+            
                 rectangle(color, render_settings.square, transform, gl);
-                line(BLACK, 1.0, [0., 0., render_settings.square_size.x, 0.], transform, gl);
-                line(BLACK, 1.0, [0., 0., 0., render_settings.square_size.y], transform, gl);
             }
-
         });
     }
 
     fn update(&mut self, args: &UpdateArgs) {
         // Rotate 2 radians per second.
         // self.rotation += 2.0 * args.dt;
+        self.dt += args.dt;
     }
 }
 
 fn main() {
-    let (cols, rows) = (100, 100);
+    let (cols, rows) = (20, 20);
     let mut game = match Game::new(cols, rows) {
         Ok(game) => game,
         Err(e) => {
@@ -101,6 +119,7 @@ fn main() {
     // Create a new game and run it.
     let mut app = App {
         gl: GlGraphics::new(opengl),
+        dt: 0.0,
     };
 
     let mut events = Events::new(EventSettings::new());
@@ -128,14 +147,14 @@ fn main() {
         }
         
         if dt > 0.01 {
-            game.update_game_state();
             dt = 0.0;
+            game.update_game_state();
             render_now = true;
         }
 
         if render_now {
             if let Some(args) = e.render_args() {
-                app.render(&args, &render_settings, &game);
+                app.render(&args, &render_settings, &mut game);
                 render_now = false;
             }
         }
