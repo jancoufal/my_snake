@@ -6,7 +6,7 @@ extern crate piston;
 use glutin_window::GlutinWindow as Window;
 use graphics::math::Scalar;
 use graphics::rectangle;
-use opengl_graphics::{GlGraphics, OpenGL};
+use opengl_graphics::{GlGraphics, OpenGL, Texture, TextureSettings};
 use piston::event_loop::{EventSettings, Events};
 use piston::input::{RenderArgs, RenderEvent, UpdateArgs, UpdateEvent};
 use piston::window::WindowSettings;
@@ -22,7 +22,7 @@ struct App {
 }
 
 impl App {
-    fn render(&mut self, args: &RenderArgs, render_settings: &RenderSettings, game: &mut Game) {
+    fn render(&mut self, args: &RenderArgs, render_settings: &RenderSettings, game: &mut Game, texture_grass: &Texture) {
         use graphics::*;
 
         const BLACK: [f32; 4] = [0.0, 0.0, 0.0, 1.0];
@@ -40,6 +40,13 @@ impl App {
         self.gl.draw(args.viewport(), |c, gl| {
             // Clear the screen.
             clear(BLACK, gl);
+
+            Image::new().draw(
+                texture_grass,
+                &c.draw_state,
+                c.transform,
+                gl
+            );
 
             rectangle(
                 RED,
@@ -66,7 +73,7 @@ impl App {
                     cell_context.cell_position.x * render_settings.square_size.x,
                     cell_context.cell_position.y * render_settings.square_size.y,
                 );
-            
+
                 let color = match cell.cell_type {
                     CellType::Uninitialized => MAGENTA,
                     CellType::Empty => DARK,
@@ -78,8 +85,10 @@ impl App {
                     },
                     CellType::Food => RED,
                 };
-            
-                rectangle(color, render_settings.square, transform, gl);
+
+                if color != DARK {
+                    rectangle(color, render_settings.square, transform, gl);
+                }
             }
         });
     }
@@ -126,6 +135,11 @@ fn main() {
     let mut dt: f64 = 0.0;
     let mut render_now = true;
 
+    let tex_grass = Texture::from_path(
+        "/Users/jcoufal/dev/rust/my-snake/assets/grass-1024.jpg", // todo: relative path
+        &TextureSettings::new(),
+    ).expect("Could not load grass texture");
+
     while let Some(e) = events.next(&mut window) {
         if let Some(args) = e.button_args() {
             match args.button {
@@ -154,7 +168,7 @@ fn main() {
 
         if render_now {
             if let Some(args) = e.render_args() {
-                app.render(&args, &render_settings, &mut game);
+                app.render(&args, &render_settings, &mut game, &tex_grass);
                 render_now = false;
             }
         }

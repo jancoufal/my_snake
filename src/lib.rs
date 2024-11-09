@@ -9,6 +9,7 @@ use graphics::rectangle;
 use graphics::types::Rectangle;
 use piston::Size;
 use std::rc::Rc;
+use opengl_graphics::{Texture, TextureSettings};
 
 static CELL_CODE_INIT_HEAD: i32 = 1;
 static CELL_CODE_EMPTY: i32 = 0;
@@ -162,7 +163,7 @@ impl Game {
                 link_to_tail: None,
             })));
         }
-
+        
         Ok(Game {
             state: GameState::Paused,
             field_size: Point2D::new(cols, rows),
@@ -226,7 +227,7 @@ impl Game {
             Direction::Up => Point2D::new(0i32, -1i32),
             Direction::Down => Point2D::new(0i32, 1i32),
         };
-        
+
         // println!(
         //     "Game Update: Direction: {:?}, head_pos: {:?} -> {:?}",
         //     self.direction,
@@ -235,7 +236,7 @@ impl Game {
         // );
 
         // todo: collision (border hit, self bite, apple)
-        
+
         // debug
         if self.get_index_from_point(new_head_pos_2d) >= self.field.len() {
             new_head_pos_2d = Point2D::new(0, 0);
