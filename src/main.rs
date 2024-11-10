@@ -101,7 +101,7 @@ impl App {
 }
 
 fn main() {
-    let (cols, rows) = (20, 20);
+    let (cols, rows) = (52, 52);
     let mut game = match Game::new(cols, rows) {
         Ok(game) => game,
         Err(e) => {

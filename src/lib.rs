@@ -163,7 +163,7 @@ impl Game {
                 link_to_tail: None,
             })));
         }
-        
+
         Ok(Game {
             state: GameState::Paused,
             field_size: Point2D::new(cols, rows),
@@ -236,9 +236,17 @@ impl Game {
         // );
 
         // todo: collision (border hit, self bite, apple)
+        if new_head_pos_2d.x < 0 {
+            new_head_pos_2d.x = 0;
+        }
+        
+        if new_head_pos_2d.y < 0 {
+            new_head_pos_2d.y = 0;
+        }
 
         // debug
-        if self.get_index_from_point(new_head_pos_2d) >= self.field.len() {
+        let new_head_index = self.get_index_from_point(new_head_pos_2d);
+        if new_head_index >= self.field.len() {
             new_head_pos_2d = Point2D::new(0, 0);
         }
 
