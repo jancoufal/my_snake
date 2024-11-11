@@ -18,10 +18,23 @@ use my_snake::*;
 
 struct App {
     gl: GlGraphics,
+    t: f64,
     dt: f64,
+    initial_update_game_state_cooldown: f64,
+    update_game_state_cooldown: f64,
 }
 
 impl App {
+    fn new(gl: GlGraphics, initial_update_game_state_cooldown: f64) -> App {
+        App {
+            gl,
+            t: 0.0,
+            dt: 0.0,
+            initial_update_game_state_cooldown,
+            update_game_state_cooldown: initial_update_game_state_cooldown
+        }
+    }
+    
     fn render(&mut self, args: &RenderArgs, render_settings: &RenderSettings, game: &mut Game, texture_grass: &Texture) {
         use graphics::*;
 
@@ -57,11 +70,11 @@ impl App {
                     render_settings.viewport_size.y as f64 / 2.
                     )
                     .rot_rad(
-                        (self.dt) as Scalar / std::f64::consts::PI,
+                        self.t as Scalar / std::f64::consts::PI,
                     )
                     .trans(
-                    200.0 * f64::sin(self.dt),
-                    200.0 * f64::cos(self.dt)
+                    200.0 * f64::sin(self.t),
+                    200.0 * f64::cos(self.t)
                 ),
                 gl
             );
@@ -92,16 +105,25 @@ impl App {
             }
         });
     }
+    
+    fn start(&mut self) {
+        self.update_game_state_cooldown = self.initial_update_game_state_cooldown;
+    }
 
-    fn update(&mut self, args: &UpdateArgs) {
-        // Rotate 2 radians per second.
-        // self.rotation += 2.0 * args.dt;
-        self.dt += args.dt;
+    fn update(&mut self, args: &UpdateArgs, game: &mut Game) {
+        self.t += args.dt;
+        self.dt = args.dt;
+        
+        self.update_game_state_cooldown -= self.dt;
+        if self.update_game_state_cooldown <= 0.0 {
+            game.update_game_state();
+            self.update_game_state_cooldown = self.initial_update_game_state_cooldown;
+        }
     }
 }
 
 fn main() {
-    let (cols, rows) = (52, 52);
+    let (cols, rows) = (12, 12);
     let mut game = match Game::new(cols, rows) {
         Ok(game) => game,
         Err(e) => {
@@ -126,14 +148,12 @@ fn main() {
         .unwrap();
 
     // Create a new game and run it.
-    let mut app = App {
-        gl: GlGraphics::new(opengl),
-        dt: 0.0,
-    };
+    let mut app = App::new(
+        GlGraphics::new(opengl),
+        0.5
+    );
 
     let mut events = Events::new(EventSettings::new());
-    let mut dt: f64 = 0.0;
-    let mut render_now = true;
 
     let tex_grass = Texture::from_path(
         "/Users/jcoufal/dev/rust/my-snake/assets/grass-1024.jpg", // todo: relative path
@@ -156,21 +176,11 @@ fn main() {
         }
 
         if let Some(args) = e.update_args() {
-            app.update(&args);
-            dt += args.dt;
+            app.update(&args, &mut game);
         }
         
-        if dt > 0.01 {
-            dt = 0.0;
-            game.update_game_state();
-            render_now = true;
-        }
-
-        if render_now {
-            if let Some(args) = e.render_args() {
-                app.render(&args, &render_settings, &mut game, &tex_grass);
-                render_now = false;
-            }
+        if let Some(args) = e.render_args() {
+            app.render(&args, &render_settings, &mut game, &tex_grass);
         }
     }
 }
