@@ -1,4 +1,5 @@
 mod point_2d;
+mod matrix_2d;
 
 use std::cell::RefCell;
 use std::cmp::PartialEq;
