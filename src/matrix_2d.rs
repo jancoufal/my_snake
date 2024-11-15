@@ -19,6 +19,10 @@ impl<T: Default + Clone> Matrix2D<T> {
         })
     }
 
+    pub fn get_size(&self) -> Point2D<i32> {
+        self.size
+    }
+    
     fn pos_to_index(&self, pos: Point2D<i32>) -> Option<usize> {
         if pos.x >= 0 && pos.x < self.size.x && pos.y >= 0 && pos.y < self.size.y {
             Some((pos.x * self.size.x + pos.y) as usize)
@@ -33,7 +37,7 @@ impl<T: Default + Clone> Matrix2D<T> {
     pub fn get_mut(&mut self, index: usize) -> Option<&mut T> {
         self.data.get_mut(index)
     }
-    
+
     pub fn get_pos(&self, pos: Point2D<i32>) -> Option<&T> {
         self.pos_to_index(pos).and_then(|i| self.get(i))
     }
