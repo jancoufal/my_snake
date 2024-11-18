@@ -14,7 +14,8 @@ use piston::Button::Keyboard;
 use piston::{ButtonEvent, Key};
 
 use my_snake::*;
-
+use my_snake::game_state::GameStateX;
+use my_snake::point_2d::Point2D;
 
 struct App {
     gl: GlGraphics,
@@ -123,6 +124,19 @@ impl App {
 }
 
 fn main() {
+
+    let board_size = Point2D::new(3, 3);
+    
+    let game_state = match GameStateX::new(board_size) {
+        Ok(game_state) => game_state,
+        Err(e) => {
+            eprintln!("Failed to initialize game: {}", e);
+            std::process::exit(1);
+        }
+    };
+    
+    panic!("END!");
+
     let (cols, rows) = (12, 12);
     let mut game = match Game::new(cols, rows) {
         Ok(game) => game,

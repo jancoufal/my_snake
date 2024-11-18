@@ -1,4 +1,5 @@
-mod point_2d;
+pub mod point_2d;
+pub mod game_state;
 mod matrix_2d;
 
 use std::cell::RefCell;
