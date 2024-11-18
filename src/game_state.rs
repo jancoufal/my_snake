@@ -59,12 +59,14 @@ impl<'a> Iterator for CellIterator<'a> {
             return None;
         }
 
-        self.index += 1;
-
-        Some(CellContext{
+        let r = Some(CellContext{
             cell_index: self.index,
             cell: &self.game.board.data[self.index]
-        })
+        });
+
+        self.index += 1;
+
+        r
     }
 }
 
