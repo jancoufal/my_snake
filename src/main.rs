@@ -127,14 +127,34 @@ fn main() {
 
     let board_size = Point2D::new(3, 3);
     
-    let game_state = match GameStateX::new(board_size) {
+    let mut game_state = match GameStateX::new(board_size) {
         Ok(game_state) => game_state,
         Err(e) => {
             eprintln!("Failed to initialize game: {}", e);
             std::process::exit(1);
         }
     };
+
+    println!("cells");
+    for c in game_state.board.data.iter() {
+        println!("{:?}", c);
+    }
     
+    println!("cells #2");
+
+    for i in 0..game_state.board.data.len() {
+        game_state.board.get_mut(i).unwrap().pos.x = i as i32;
+    }
+
+    for c in game_state.board.data.iter() {
+        println!("{:?}", c);
+    }
+
+    println!("cells #3");
+    for c in game_state.iter_cell_mut() {
+        println!("c: {:?} = {:?}", c.cell_index, c.cell);
+    }
+
     panic!("END!");
 
     let (cols, rows) = (12, 12);

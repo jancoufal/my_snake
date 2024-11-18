@@ -1,8 +1,9 @@
 use crate::point_2d::Point2D;
 
 pub struct Matrix2D<T> {
-    size: Point2D<i32>,
-    data: Vec<T>,
+    // TODO: make private
+    pub size: Point2D<i32>,
+    pub data: Vec<T>,
 }
 
 impl<T: Default + Clone> Matrix2D<T> {
